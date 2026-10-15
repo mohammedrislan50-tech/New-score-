@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sri Lanka Softball Cricket Engine & OBS Overlay Studio</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Roboto Condensed & Anton -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,400;0,600;0,700;0,900;1,700&family=Anton&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary-blue: #1D70B8;
+      --bg-light: #F4F6F9;
+      --card-white: #FFFFFF;
+    }
+    body {
+      font-family: 'Roboto Condensed', sans-serif;
+      background-color: var(--bg-light);
+      color: #1e293b;
+    }
+    .font-anton { font-family: 'Anton', sans-serif; }
+    
+    /* Scoreczz Modern Blue Design System */
+    .app-header { background-color: var(--primary-blue); }
+    .card-scoreczz {
+      background: var(--card-white);
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+      border: 1px solid #e2e8f0;
+    }
+    .btn-primary-blue {
+      background-color: var(--primary-blue);
+      color: white;
+      font-weight: 700;
+    }
+    .btn-primary-blue:hover { background-color: #155792; }
+    
+    /* OBS Broadcast Overlay Engine Styles (1920x1080 Native Reference) */
+    .obs-canvas-1080p {
+      width: 100%;
+      max-width: 1280px;
+      height: 220px;
+      background: transparent;
+      position: relative;
+    }
+    .chevron-left-navy {
+      clip-path: polygon(0 0, 90% 0, 100% 100%, 0% 100%);
+      background: #08053D;
+    }
+    .chevron-right-navy {
+      clip-path: polygon(10% 0, 100% 0, 100% 100%, 0% 100%);
+      background: #08053D;
+    }
+    .center-score-panel-gradient {
+      clip-path: polygon(10% 0, 90% 0, 100% 100%, 0 100%);
+      background: linear-gradient(135deg, #00DDEB 0%, #00F5D5 50%, #55FF00 100%);
+    }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+  <!-- UNIFIED APP HEADER BAR -->
+  <header class="app-header text-white p-3.5 sticky top-0 z-50 shadow-md flex justify-between items-center">
+    <div class="flex items-center space-x-3">
+      <button onclick="showPage('home')" class="text-white text-xl font-bold hover:opacity-80">←</button>
+      <div>
+        <h1 class="text-lg font-black tracking-wider uppercase leading-none" id="header-app-title">Sri Lanka Softball Engine</h1>
+        <p class="text-[10px] text-blue-100 font-semibold">WORLD-CLASS CRICKET & BROADCAST SUITE</p>
+      </div>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="showPage('home')" class="bg-white/20 hover:bg-white/30 text-white text-xs px-3 py-1.5 rounded-full font-bold backdrop-blur-sm">Home</button>
+      <button onclick="triggerOBS('clear')" class="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1.5 rounded-full font-bold shadow">Clear Overlay</button>
+    </div>
+  </header>
+
+  <!-- MAIN APP WRAPPER -->
+  <main class="flex-1 p-3 max-w-4xl w-full mx-auto space-y-4">
+
+    <!-- PAGE 1: HOME & TOURNAMENT SETUP -->
+    <div id="page-home" class="space-y-4">
+      <div class="card-scoreczz p-4 flex justify-between items-center">
+        <div>
+          <h2 class="text-lg font-black text-slate-800">Tournaments Hub</h2>
+          <p class="text-xs text-slate-500">Create & manage professional tournaments</p>
+        </div>
+        <button onclick="toggleModal('modal-create-tourn')" class="btn-primary-blue text-xs px-4 py-2.5 rounded-xl shadow-md flex items-center gap-1.5">
+          <span>+</span> Create Tournament
+        </button>
+      </div>
+
+      <!-- Active Tournaments List -->
+      <div id="tournaments-list-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div onclick="selectTournament('Western Province Softball League')" class="card-scoreczz p-4 cursor-pointer hover:border-blue-500 transition space-y-2 border-l-4 border-blue-600">
+          <div class="flex justify-between items-start">
+            <span class="text-[10px] uppercase font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">League</span>
+            <span class="text-xs text-emerald-600 font-bold">Active</span>
+          </div>
+          <h3 class="font-black text-base text-slate-800">Western Province Softball League</h3>
+          <p class="text-xs text-slate-500">Dates: 2026-10-15 (1 Day)</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE 2: TOURNAMENT DASHBOARD (UNIFIED TABS) -->
+    <div id="page-dashboard" class="hidden space-y-4">
+      <!-- Dashboard Top Summary Header -->
+      <div class="card-scoreczz p-4 border-l-4 border-blue-600 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+        <div>
+          <span class="text-[10px] uppercase font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full" id="dash-tourn-type-badge">League</span>
+          <h2 class="text-2xl font-black text-slate-800 mt-1" id="dash-tourn-title">Western Province Softball League</h2>
+          <p class="text-xs text-slate-500" id="dash-tourn-duration">Dates: 2026-10-15</p>
+        </div>
+        <button onclick="copyOBSOverlayURL()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-xl shadow flex items-center gap-2">
+          🔗 Copy OBS Overlay Link
+        </button>
+      </div>
+
+      <!-- Navigation Tabs Bar -->
+      <div class="card-scoreczz p-1.5 flex overflow-x-auto gap-1 border-b-2 border-blue-600">
+        <button onclick="switchTab('edit-match')" class="tab-btn active bg-blue-600 text-white font-bold text-xs px-4 py-2 rounded-lg whitespace-nowrap">Edit Match</button>
+        <button onclick="switchTab('teams')" class="tab-btn text-slate-600 hover:text-blue-600 font-bold text-xs px-4 py-2 rounded-lg whitespace-nowrap">Teams</button>
+        <button onclick="switchTab('table')" class="tab-btn text-slate-600 hover:text-blue-600 font-bold text-xs px-4 py-2 rounded-lg whitespace-nowrap">Points Table</button>
+        <button onclick="switchTab('stats')" class="tab-btn text-slate-600 hover:text-blue-600 font-bold text-xs px-4 py-2 rounded-lg whitespace-nowrap">Stats</button>
+        <button onclick="switchTab('info')" class="tab-btn text-slate-600 hover:text-blue-600 font-bold text-xs px-4 py-2 rounded-lg whitespace-nowrap">Info</button>
+        <button onclick="switchTab('overlay')" class="tab-btn text-slate-600 hover:text-blue-600 font-bold text-xs px-4 py-2 rounded-lg whitespace-nowrap">OBS Overlay Studio</button>
+      </div>
+
+      <!-- TAB 1: EDIT MATCH & LIVE SCORING ENGINE -->
+      <div id="tab-edit-match" class="tab-content space-y-4">
+        
+        <!-- Setup New Match Card -->
+        <div class="card-scoreczz p-4 space-y-3">
+          <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+            <h3 class="font-bold text-blue-700 text-sm uppercase">New Match Parameters Setup</h3>
+            <span class="text-[10px] text-slate-400 font-mono">Stage 1</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 text-xs">
+            <div class="flex items-center justify-between bg-slate-50 p-2 rounded-xl border border-slate-200">
+              <span class="text-slate-600 font-semibold">Total Overs :</span>
+              <div class="flex items-center gap-1">
+                <input type="number" id="setup-overs" value="5" class="w-10 bg-white text-center rounded font-bold text-blue-700 border">
+                <button onclick="adjustVal('setup-overs', 1)" class="bg-blue-600 text-white px-2 py-0.5 rounded font-black">+</button>
+                <button onclick="adjustVal('setup-overs', -1)" class="bg-blue-600 text-white px-2 py-0.5 rounded font-black">-</button>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between bg-slate-50 p-2 rounded-xl border border-slate-200">
+              <span class="text-slate-600 font-semibold">Balls / Over :</span>
+              <div class="flex items-center gap-1">
+                <input type="number" id="setup-balls-per-over" value="6" class="w-10 bg-white text-center rounded font-bold text-blue-700 border">
+                <button onclick="adjustVal('setup-balls-per-over', 1)" class="bg-blue-600 text-white px-2 py-0.5 rounded font-black">+</button>
+                <button onclick="adjustVal('setup-balls-per-over', -1)" class="bg-blue-600 text-white px-2 py-0.5 rounded font-black">-</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 text-xs">
+            <div>
+              <label class="text-slate-500 block mb-1">Match Stage Type :</label>
+              <select id="setup-match-stage" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-700">
+                <option value="1st Round League Match">1st Round League Match</option>
+                <option value="Knockout Match">Knockout Match</option>
+                <option value="Quarter Final">Quarter Final</option>
+                <option value="Semi Final 1">Semi Final 1</option>
+                <option value="Final">Final</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-slate-500 block mb-1">Match Date :</label>
+              <input type="date" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs text-slate-700 font-bold" value="2026-10-15">
+            </div>
+          </div>
+
+          <!-- Team Selection Buttons -->
+          <div class="grid grid-cols-2 gap-3 border-t border-b border-slate-100 py-3">
+            <button onclick="openTeamSearchModal('A')" class="btn-primary-blue text-xs font-bold py-2.5 rounded-xl shadow" id="btn-team-a-label">
+              Select Team A (EAGLES)
+            </button>
+            <button onclick="openTeamSearchModal('B')" class="btn-primary-blue text-xs font-bold py-2.5 rounded-xl shadow" id="btn-team-b-label">
+              Select Team B (WARRIORS)
+            </button>
+          </div>
+
+          <button onclick="openTossModal()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-xl uppercase text-xs tracking-wider shadow-lg flex items-center justify-center gap-2">
+            <span>NEXT: TOSS SETUP</span> →
+          </button>
+        </div>
+
+        <!-- LIVE CRICKET SCORING CONSOLE -->
+        <div class="card-scoreczz p-4 space-y-4">
+          <!-- Live Score Banner Header -->
+          <div class="bg-gradient-to-r from-blue-700 via-blue-800 to-slate-900 text-white p-3.5 rounded-xl flex justify-between items-center shadow">
+            <div>
+              <h3 class="font-black text-lg" id="live-match-teams-title">EAGLES vs WARRIORS</h3>
+              <p class="text-xs text-blue-200 font-bold" id="live-match-sub-details">Match No. 1 | 5 Overs | Group Match</p>
+            </div>
+            <div class="text-right">
+              <span class="text-3xl font-black text-amber-300" id="live-runs-wickets-display">0/0</span>
+              <span class="text-xs text-slate-200 font-bold block" id="live-overs-display">(0.0 ov)</span>
+            </div>
+          </div>
+
+          <div class="text-xs text-center bg-blue-50 text-blue-800 py-1.5 rounded-xl font-bold border border-blue-200" id="live-toss-details-strip">
+            'EAGLES' won the toss and elected to bat
+          </div>
+
+          <!-- BATTER CARDS (STRIKER & NON-STRIKER with A to Z Dynamic Squad Binding) -->
+          <div class="grid grid-cols-2 gap-3">
+            <!-- Striker Card -->
+            <div class="bg-slate-50 p-3 rounded-xl border-2 border-emerald-500 space-y-2 relative">
+              <div class="flex justify-between items-center">
+                <span class="text-[10px] text-emerald-700 font-bold flex items-center gap-1">🏏 On Strike</span>
+                <button onclick="openDynamicPlayerSelector('striker')" class="text-blue-600 text-xs font-bold bg-white px-2 py-0.5 rounded border">Change ✏️</button>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="w-10 h-10 bg-blue-100 rounded-full border border-blue-300 flex items-center justify-center text-xs font-bold text-blue-700">👤</div>
+                <div>
+                  <h4 class="font-black text-xs text-slate-800" id="striker-name-val">Sasindu Ashen</h4>
+                  <p class="text-xs font-mono font-bold text-blue-700"><span id="striker-runs-val">0</span> <span class="text-slate-400 text-[10px]">(<span id="striker-balls-val">0</span>)</span></p>
+                </div>
+              </div>
+              <div class="text-[10px] text-slate-500 flex justify-between border-t border-slate-200 pt-1">
+                <span>4s: <b class="text-slate-800" id="striker-4s-val">0</b></span>
+                <span>6s: <b class="text-slate-800" id="striker-6s-val">0</b></span>
+                <span>SR: <b class="text-slate-800" id="striker-sr-val">0.00</b></span>
+              </div>
+            </div>
+
+            <!-- Non-Striker Card -->
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+              <div class="flex justify-between items-center">
+                <span class="text-[10px] text-slate-400 font-bold">Non-Striker</span>
+                <button onclick="openDynamicPlayerSelector('nonstriker')" class="text-blue-600 text-xs font-bold bg-white px-2 py-0.5 rounded border">Change ✏️</button>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="w-10 h-10 bg-slate-200 rounded-full border border-slate-300 flex items-center justify-center text-xs font-bold text-slate-600">👤</div>
+                <div>
+                  <h4 class="font-black text-xs text-slate-800" id="nonstriker-name-val">Bd Lakshan</h4>
+                  <p class="text-xs font-mono font-bold text-blue-700"><span id="nonstriker-runs-val">0</span> <span class="text-slate-400 text-[10px]">(<span id="nonstriker-balls-val">0</span>)</span></p>
+                </div>
+              </div>
+              <div class="text-[10px] text-slate-500 flex justify-between border-t border-slate-200 pt-1">
+                <span>4s: <b class="text-slate-800" id="nonstriker-4s-val">0</b></span>
+                <span>6s: <b class="text-slate-800" id="nonstriker-6s-val">0</b></span>
+                <span>SR: <b class="text-slate-800" id="nonstriker-sr-val">0.00</b></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Strike Swap & Partnership Bar -->
+          <div class="flex items-center justify-between bg-slate-100 p-2 rounded-xl text-xs">
+            <span class="text-slate-600 font-semibold">Partnership: <b class="text-blue-700 font-mono" id="partnership-val">0 (0)</b></span>
+            <button onclick="swapStrike()" class="bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold px-3 py-1 rounded-lg flex items-center gap-1 shadow">
+              🔄 Change Strike
+            </button>
+          </div>
+
+          <!-- BOWLER CARD (A to Z Dynamic Bowling Team Binding) -->
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+            <div class="flex justify-between items-center">
+              <div class="flex items-center gap-2">
+                <span class="text-red-600">⚾</span>
+                <span class="text-xs font-bold text-slate-600">Bowler :</span>
+                <span class="text-xs font-black text-blue-700" id="bowler-name-val">Thanush V</span>
+              </div>
+              <button onclick="openDynamicPlayerSelector('bowler')" class="text-blue-600 text-xs font-bold bg-white px-2 py-0.5 rounded border">Change ✏️</button>
+            </div>
+            
+            <div class="flex items-center justify-between border-t border-b border-slate-200 py-2">
+              <div class="text-base font-mono font-black text-slate-800" id="bowler-figures-val">0.0 - 0 - 0 - 0</div>
+              <div class="flex gap-1">
+                <button onclick="triggerPlayerModal('bowler', 'show')" class="bg-emerald-600 text-white text-[10px] font-bold px-2.5 py-1 rounded">Show</button>
+                <button onclick="triggerPlayerModal('bowler', 'profile')" class="bg-blue-600 text-white text-[10px] font-bold px-2.5 py-1 rounded">Profile</button>
+              </div>
+            </div>
+
+            <div class="text-[10px] text-slate-500 flex justify-between font-mono">
+              <span>Econ: <b class="text-slate-800" id="bowler-econ-val">0.00</b></span>
+              <span>Dots: <b class="text-slate-800" id="bowler-dots-val">0</b></span>
+              <span>Extras: <b class="text-slate-800" id="bowler-extras-val">0</b></span>
+            </div>
+          </div>
+
+          <!-- THIS OVER BALL TIMELINE -->
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+            <span class="text-xs font-bold text-slate-600 block mb-1.5">This Over : <b class="text-blue-700 font-mono" id="this-over-runs-total">0 runs</b></span>
+            <div class="flex gap-2 min-h-[32px] items-center overflow-x-auto" id="this-over-chips-container">
+              <span class="text-xs text-slate-400 italic">No deliveries bowled yet</span>
+            </div>
+          </div>
+
+          <!-- COMPLETE ICC SCORING BUTTONS KEYPAD -->
+          <div class="space-y-2 pt-1">
+            <div class="grid grid-cols-7 gap-1.5 text-sm font-black">
+              <button onclick="addRun(0)" class="bg-slate-200 hover:bg-slate-300 text-slate-800 py-3 rounded-xl border border-slate-300 shadow-sm">0</button>
+              <button onclick="addRun(1)" class="bg-slate-200 hover:bg-slate-300 text-slate-800 py-3 rounded-xl border border-slate-300 shadow-sm">1</button>
+              <button onclick="addRun(1)" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold py-3 rounded-xl border border-slate-300">1DCL</button>
+              <button onclick="addRun(2)" class="bg-slate-200 hover:bg-slate-300 text-slate-800 py-3 rounded-xl border border-slate-300 shadow-sm">2</button>
+              <button onclick="addRun(3)" class="bg-slate-200 hover:bg-slate-300 text-slate-800 py-3 rounded-xl border border-slate-300 shadow-sm">3</button>
+              <button onclick="addRun(4)" class="bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl shadow-md">4</button>
+              <button onclick="addRun(6)" class="bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl shadow-md">6</button>
+            </div>
+
+            <div class="grid grid-cols-6 gap-1.5 text-xs font-bold">
+              <button onclick="addRun(4)" class="bg-slate-200 text-slate-800 py-2.5 rounded-xl border border-slate-300">4</button>
+              <button onclick="addRun(5)" class="bg-slate-200 text-slate-800 py-2.5 rounded-xl border border-slate-300">5</button>
+              <button onclick="addRun(6)" class="bg-slate-200 text-slate-800 py-2.5 rounded-xl border border-slate-300">6</button>
+              <button onclick="addRun(7)" class="bg-slate-200 text-slate-800 py-2.5 rounded-xl border border-slate-300">7</button>
+              <button onclick="addExtraPopup('LB')" class="bg-slate-300 text-slate-800 py-2.5 rounded-xl border border-slate-400">LB</button>
+              <button onclick="addExtraPopup('BYE')" class="bg-slate-300 text-slate-800 py-2.5 rounded-xl border border-slate-400">BYE</button>
+            </div>
+
+            <div class="grid grid-cols-4 gap-1.5 text-xs font-bold">
+              <button onclick="openWideSubMenu()" class="bg-slate-300 hover:bg-slate-400 text-slate-800 py-3 rounded-xl border border-slate-400">Wide</button>
+              <button onclick="openNoBallSubMenu()" class="bg-slate-300 hover:bg-slate-400 text-slate-800 py-3 rounded-xl border border-slate-400">NoBall</button>
+              <button onclick="addExtraPopup('Penalty')" class="bg-slate-300 hover:bg-slate-400 text-slate-800 py-3 rounded-xl border border-slate-400">Penalty</button>
+              <button onclick="triggerWicketDismissal()" class="bg-red-600 hover:bg-red-700 text-white font-black py-3 rounded-xl shadow-lg text-sm">OUT</button>
+            </div>
+
+            <div class="grid grid-cols-3 gap-1.5 text-xs font-bold pt-1">
+              <button onclick="endInningAction()" class="bg-slate-800 text-white py-2.5 rounded-xl">End Inning</button>
+              <button onclick="abandonMatchAction()" class="bg-slate-800 text-white py-2.5 rounded-xl">Abandone Match</button>
+              <button onclick="undoLastDelivery()" class="bg-amber-500 hover:bg-amber-600 text-white py-2.5 rounded-xl flex items-center justify-center gap-1 shadow">
+                ↩ UNDO
+              </button>
+            </div>
+          </div>
+
+          <!-- ALL OBS BROADCAST GREEN OVERLAY BUTTONS TOOLBAR -->
+          <div class="bg-slate-900 p-3 rounded-xl border-2 border-emerald-500 space-y-2">
+            <span class="text-[10px] font-black text-emerald-400 uppercase tracking-widest block">OBS Broadcast Overlay Controls:</span>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="toggleModal('modal-lower-scoreboard')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-2 rounded-lg font-black shadow flex-1">
+                Lower Scoreboard
+              </button>
+              <button onclick="toggleModal('modal-other-panels')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-2 rounded-lg font-black shadow flex-1">
+                Other Panels
+              </button>
+              <button onclick="triggerOBS('ground')" class="bg-emerald-700 text-white text-xs px-3 py-2 rounded-lg font-bold">
+                🏟️ Pitch
+              </button>
+              <button onclick="triggerOBS('clear')" class="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-2 rounded-lg font-bold">
+                Clear Overlay
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: TEAMS & ROSTERS -->
+      <div id="tab-teams" class="hidden tab-content space-y-4">
+        <div class="flex justify-between items-center">
+          <span class="text-xs font-bold text-slate-500">Registered Teams List & Squads</span>
+          <button onclick="toggleModal('modal-add-team')" class="btn-primary-blue text-xs px-3 py-2 rounded-xl font-bold">+ Add New Team</button>
+        </div>
+        <div id="teams-cards-container" class="space-y-3">
+          <div class="card-scoreczz p-4 space-y-2">
+            <div class="flex justify-between items-center">
+              <h4 class="font-black text-sm text-slate-800">EAGLES (Group A)</h4>
+              <button onclick="openManageSquad('EAGLES')" class="text-xs bg-blue-100 text-blue-700 font-bold px-2.5 py-1 rounded-lg">Manage Squad (11 Players)</button>
+            </div>
+          </div>
+          <div class="card-scoreczz p-4 space-y-2">
+            <div class="flex justify-between items-center">
+              <h4 class="font-black text-sm text-slate-800">WARRIORS (Group A)</h4>
+              <button onclick="openManageSquad('WARRIORS')" class="text-xs bg-blue-100 text-blue-700 font-bold px-2.5 py-1 rounded-lg">Manage Squad (11 Players)</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: POINTS TABLE -->
+      <div id="tab-table" class="hidden tab-content space-y-4">
+        <div class="card-scoreczz p-4 space-y-3">
+          <h3 class="font-bold text-blue-700 text-sm border-b pb-2">Tournament Group Standings</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-100 text-slate-600 uppercase font-bold">
+                <tr>
+                  <th class="p-2">Team</th>
+                  <th class="p-2">P</th>
+                  <th class="p-2">W</th>
+                  <th class="p-2">L</th>
+                  <th class="p-2">Pts</th>
+                  <th class="p-2">NRR</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 font-semibold" id="points-table-body">
+                <tr><td class="p-2 font-bold text-slate-800">1. EAGLES</td><td class="p-2">1</td><td class="p-2">1</td><td class="p-2">0</td><td class="p-2 font-bold text-blue-600">2</td><td class="p-2">+2.400</td></tr>
+                <tr><td class="p-2 font-bold text-slate-800">2. WARRIORS</td><td class="p-2">1</td><td class="p-2">0</td><td class="p-2">1</td><td class="p-2 font-bold text-blue-600">0</td><td class="p-2">-2.400</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4: STATS -->
+      <div id="tab-stats" class="hidden tab-content space-y-4">
+        <div class="card-scoreczz p-4 space-y-3">
+          <h3 class="font-bold text-blue-700 text-sm border-b pb-2">Tournament Leaderboards</h3>
+          <div class="space-y-2 text-xs">
+            <div class="bg-slate-50 p-3 rounded-xl border flex justify-between items-center font-bold">
+              <span>Most Runs: <span class="text-blue-700">Sasindu Ashen (EAGLES)</span></span>
+              <span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded">32 Runs</span>
+            </div>
+            <div class="bg-slate-50 p-3 rounded-xl border flex justify-between items-center font-bold">
+              <span>Most Wickets: <span class="text-red-600">Thanush V (WARRIORS)</span></span>
+              <span class="bg-red-100 text-red-800 px-2 py-0.5 rounded">2 Wickets</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 5: INFO -->
+      <div id="tab-info" class="hidden tab-content space-y-4">
+        <div class="card-scoreczz p-4 space-y-3">
+          <h3 class="font-bold text-blue-700 text-sm border-b pb-2">Tournament Settings & Info</h3>
+          <p class="text-xs text-slate-600">Manage tournament configurations, dates, and venue details.</p>
+        </div>
+      </div>
+
+      <!-- TAB 6: OBS OVERLAY STUDIO PREVIEW -->
+      <div id="tab-overlay" class="hidden tab-content space-y-4">
+        <div class="card-scoreczz p-4 space-y-4">
+          <h3 class="font-bold text-blue-700 text-sm border-b pb-2">1920×1080 Broadcast TV OBS Overlay Live Canvas</h3>
+          <div class="w-full bg-slate-950 p-4 rounded-xl border border-slate-800 overflow-x-auto flex justify-center">
+            
+            <!-- BROADCAST SCOREBOARD CANVAS PREVIEW -->
+            <div class="obs-canvas-1080p flex items-end justify-center pb-4">
+              <div class="w-full h-[110px] flex items-center relative shadow-2xl">
+                
+                <!-- Left Team Panel (Navy) -->
+                <div class="w-[38%] h-full chevron-left-navy flex items-center px-6 gap-4 text-white">
+                  <div class="w-12 h-12 bg-white/10 rounded-full border border-cyan-400 flex items-center justify-center font-bold text-lg">🛡️</div>
+                  <div>
+                    <h2 class="text-2xl font-black tracking-widest text-white leading-none" id="obs-team-a-name">EAGLES</h2>
+                    <p class="text-xs font-bold text-cyan-300 mt-1" id="obs-striker-line">SASINDU * 0 (0)</p>
+                  </div>
+                </div>
+
+                <!-- Center Score Panel (Cyan-Lime Gradient Graphic) -->
+                <div class="w-[24%] h-full center-score-panel-gradient flex flex-col justify-center items-center text-[#08053D] relative shadow-2xl">
+                  <div class="text-5xl font-anton tracking-tighter leading-none" id="obs-main-score">0 - 0</div>
+                  <div class="text-sm font-bold tracking-wider" id="obs-main-overs">0.0 OVERS</div>
+                  <div class="absolute bottom-0 w-full bg-white text-center text-[10px] font-black tracking-widest py-0.5 text-[#08053D]" id="obs-bottom-status-strip">
+                    EAGLES ELECTED TO BAT FIRST
+                  </div>
+                </div>
+
+                <!-- Right Team Panel (Navy) -->
+                <div class="w-[38%] h-full chevron-right-navy flex items-center justify-end px-6 gap-4 text-white">
+                  <div class="text-right">
+                    <h2 class="text-2xl font-black tracking-widest text-white leading-none" id="obs-team-b-name">WARRIORS</h2>
+                    <p class="text-xs font-bold text-amber-300 mt-1" id="obs-bowler-line">THANUSH 0.0-0-0-0</p>
+                  </div>
+                  <div class="w-12 h-12 bg-white/10 rounded-full border border-amber-400 flex items-center justify-center font-bold text-lg">🛡️</div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- MODAL 1: LOWER SCOREBOARD CONTROL (Screen 17 Exact Match) -->
+  <div id="modal-lower-scoreboard" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div class="card-scoreczz rounded-2xl p-5 max-w-md w-full space-y-4 border-2 border-red-600 bg-white">
+      <div class="bg-red-600 text-white p-2.5 -mx-5 -mt-5 rounded-t-2xl font-black text-center text-sm uppercase">
+        Lower Scoreboard
+      </div>
+
+      <div class="flex items-center justify-center gap-2 text-xs font-bold text-slate-700">
+        <span>Loop :</span>
+        <button class="w-7 h-7 bg-red-600 text-white rounded-full flex items-center justify-center">⏸</button>
+        <span>Started</span>
+      </div>
+
+      <p class="text-center text-xs font-bold text-slate-500">Show Manual Strips (On Scoreboard)</p>
+
+      <div class="flex flex-wrap gap-2 justify-center">
+        <button onclick="triggerOBS('powerplay')" class="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-full font-bold">Powerplay</button>
+        <button onclick="triggerOBS('tourn_name')" class="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-full font-bold">Tournament Name</button>
+        <button onclick="triggerOBS('this_over')" class="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-full font-bold">This Over</button>
+        <button onclick="triggerOBS('last_out')" class="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-full font-bold">Last Out Batsmen</button>
+        <button onclick="triggerOBS('partnership')" class="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-full font-bold">Current Partnership</button>
+        <button onclick="triggerOBS('vs_team')" class="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-full font-bold">Team vs Team</button>
+        <button onclick="triggerOBS('projected')" class="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-full font-bold">Projected Score / CRR / Target</button>
+        <button onclick="triggerOBS('toss_need')" class="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-full font-bold">Toss / Need Runs / winner</button>
+        <button onclick="triggerOBS('batsmen_bowler')" class="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-full font-bold">Batsmen Bowler</button>
+        <button onclick="triggerOBS('boundaries')" class="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-full font-bold">Boundaries Count</button>
+      </div>
+
+      <div class="border-t pt-3 space-y-2">
+        <label class="block text-xs font-bold text-slate-600">Commentator Text Strip :</label>
+        <div class="flex gap-2">
+          <input type="text" id="commentator-text-input" placeholder="e.g. Live commentary from Ground" class="flex-1 bg-slate-100 border p-2 rounded-xl text-xs">
+          <button onclick="triggerOBS('commentator')" class="bg-emerald-600 text-white text-xs px-4 py-2 rounded-xl font-bold">Show</button>
+        </div>
+      </div>
+
+      <button onclick="toggleModal('modal-lower-scoreboard')" class="w-full bg-slate-200 text-slate-800 font-bold py-2 rounded-xl text-xs">Close</button>
+    </div>
+  </div>
+
+  <!-- MODAL 2: OTHER PANELS CONTROL (Screen 18 Exact Match) -->
+  <div id="modal-other-panels" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div class="card-scoreczz rounded-2xl p-5 max-w-md w-full space-y-4 border-2 border-red-600 bg-white">
+      <div class="bg-red-600 text-white p-2.5 -mx-5 -mt-5 rounded-t-2xl font-black text-center text-sm uppercase">
+        Theme Other Panels
+      </div>
+
+      <div class="space-y-2 text-xs font-bold text-slate-700">
+        <div class="flex justify-between items-center">
+          <span>4s/6s/Wicket Graphics overlay :</span>
+          <span class="bg-slate-200 text-slate-600 px-2 py-0.5 rounded">OFF</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span>4s/6s Counter :</span>
+          <span class="bg-pink-600 text-white px-2 py-0.5 rounded">ON</span>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap gap-2 justify-center">
+        <button onclick="triggerOBS('teams_logo')" class="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-full font-bold">vs Teams Logo</button>
+        <button onclick="triggerOBS('toss_details')" class="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-full font-bold">Toss Details</button>
+        <button onclick="triggerOBS('counter_4s_6s')" class="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-full font-bold">4s/6s counter</button>
+        <button onclick="triggerOBS('need_board')" class="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-full font-bold">Need Board</button>
+        <button onclick="triggerOBS('black_board')" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-full font-bold">Black Board</button>
+        <button onclick="triggerOBS('both_squads')" class="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-full font-bold">Both Squads (only names)</button>
+        <button onclick="triggerOBS('squad_a_img')" class="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-full font-bold">Squad A with image</button>
+        <button onclick="triggerOBS('squad_b_img')" class="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-full font-bold">Squad B with image</button>
+      </div>
+
+      <div class="border-t pt-3 space-y-2">
+        <label class="block text-xs font-bold text-slate-600">Custom Overlay Message :</label>
+        <div class="flex gap-2">
+          <input type="text" id="custom-message-input" placeholder="Type message for broadcast..." class="flex-1 bg-slate-100 border p-2 rounded-xl text-xs">
+          <button onclick="triggerOBS('custom_msg')" class="bg-emerald-600 text-white text-xs px-4 py-2 rounded-xl font-bold">Show Message</button>
+        </div>
+      </div>
+
+      <button onclick="toggleModal('modal-other-panels')" class="w-full bg-slate-200 text-slate-800 font-bold py-2 rounded-xl text-xs">Close</button>
+    </div>
+  </div>
+
+  <!-- MODAL 3: AUTOMATIC WICKET DISMISSAL POPUP -->
+  <div id="modal-wicket-popup" class="fixed inset-0 bg-black/85 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div class="card-scoreczz rounded-2xl p-5 max-w-sm w-full space-y-3 border-2 border-red-600 bg-white">
+      <h3 class="font-black text-red-600 text-base text-center uppercase">Wicket Dismissal Details</h3>
+      <div class="space-y-2 text-xs">
+        <div>
+          <label class="text-slate-600 font-bold block mb-1">Dismissal Type :</label>
+          <select id="wicket-type-select" class="w-full bg-slate-100 border p-2 rounded-xl font-bold">
+            <option value="Bowled">Bowled 🎳</option>
+            <option value="Caught">Caught 🧤</option>
+            <option value="LBW">LBW 🦵</option>
+            <option value="Run Out">Run Out 🏃</option>
+            <option value="Stumped">Stumped 🧤</option>
+            <option value="Hit Wicket">Hit Wicket 🏏</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-slate-600 font-bold block mb-1">Fielder Name (Optional) :</label>
+          <input type="text" id="wicket-fielder-input" placeholder="e.g. Fielder name" class="w-full bg-slate-100 border p-2 rounded-xl">
+        </div>
+        <div>
+          <label class="text-slate-600 font-bold block mb-1">Next Incoming Batsman :</label>
+          <input type="text" id="next-batsman-input" placeholder="Enter next batsman name..." class="w-full bg-slate-100 border p-2 rounded-xl font-bold text-blue-700">
+        </div>
+      </div>
+      <button onclick="confirmWicketDismissal()" class="w-full bg-red-600 text-white font-black py-2.5 rounded-xl uppercase text-xs shadow-lg">
+        CONFIRM OUT & ROTATE
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL 4: DYNAMIC A TO Z PLAYER SELECTOR (Strict Team Squad Binding) -->
+  <div id="modal-select-player-dynamic" class="fixed inset-0 bg-black/85 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div class="card-scoreczz rounded-2xl p-5 max-w-sm w-full space-y-3 border-2 border-blue-600 bg-white">
+      <h3 class="font-black text-blue-700 text-base text-center uppercase" id="dynamic-modal-title">Select Player</h3>
+      <div id="dynamic-player-list-container" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+        <!-- Team specific squad players dynamically populated -->
+      </div>
+      <button onclick="toggleModal('modal-select-player-dynamic')" class="w-full bg-slate-200 text-slate-800 font-bold py-2 rounded-xl text-xs">Cancel</button>
+    </div>
+  </div>
+
+  <!-- MODAL 5: TOSS SELECTION POPUP -->
+  <div id="modal-toss" class="fixed inset-0 bg-black/85 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div class="card-scoreczz rounded-2xl p-5 max-w-sm w-full space-y-4 border border-blue-600 text-center bg-white">
+      <h3 class="font-black text-blue-700 text-base">Select Toss Winner</h3>
+      <div class="grid grid-cols-2 gap-3">
+        <button onclick="selectTossWinner('EAGLES')" id="toss-team-a-btn" class="bg-blue-50 text-blue-800 font-black py-3 rounded-xl border-2 border-blue-600 shadow">
+          EAGLES
+        </button>
+        <button onclick="selectTossWinner('WARRIORS')" id="toss-team-b-btn" class="bg-slate-100 text-slate-800 font-black py-3 rounded-xl border border-slate-300">
+          WARRIORS
+        </button>
+      </div>
+
+      <div class="border-t pt-3 space-y-2">
+        <span class="text-xs font-bold text-slate-600 block">Elected to :</span>
+        <div class="flex justify-center gap-4">
+          <button onclick="selectElected('bat')" id="elect-bat-btn" class="w-12 h-12 bg-blue-600 text-white rounded-xl flex items-center justify-center text-2xl font-bold shadow">
+            🏏
+          </button>
+          <button onclick="selectElected('bowl')" id="elect-bowl-btn" class="w-12 h-12 bg-slate-100 text-slate-800 rounded-xl border border-slate-300 flex items-center justify-center text-2xl">
+            ⚾
+          </button>
+        </div>
+      </div>
+
+      <button onclick="startMatchNow()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-xl uppercase text-xs shadow-lg">
+        START MATCH LIVE
+      </button>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC ENGINE -->
+  <script>
+    // App Dynamic State & Teams Squad Database (A to Z Architecture)
+    let appData = {
+      runs: 0,
+      wickets: 0,
+      overs: 0,
+      balls: 0,
+      battingTeam: 'EAGLES',
+      bowlingTeam: 'WARRIORS',
+      tossWinner: 'EAGLES',
+      electedChoice: 'bat',
+      striker: { name: 'Sasindu Ashen', runs: 0, balls: 0, fours: 0, sixes: 0 },
+      nonStriker: { name: 'Bd Lakshan', runs: 0, balls: 0, fours: 0, sixes: 0 },
+      bowler: { name: 'Thanush V', overs: 0, balls: 0, runs: 0, wickets: 0 },
+      thisOver: [],
+      history: [],
+      teams: {
+        'EAGLES': {
+          fullName: 'EAGLES',
+          shortName: 'EAGLES',
+          players: [
+            { name: 'Sasindu Ashen', role: 'Batsman' },
+            { name: 'Bd Lakshan', role: 'Batsman' },
+            { name: 'Chathuka Perera', role: 'All-Rounder' },
+            { name: 'Nuwan Silva', role: 'Bowler' },
+            { name: 'Kasun Madushanka', role: 'Batsman' }
+          ]
+        },
+        'WARRIORS': {
+          fullName: 'WARRIORS',
+          shortName: 'WARRIORS',
+          players: [
+            { name: 'Thanush V', role: 'Bowler' },
+            { name: 'Nisamdeen', role: 'All-Rounder' },
+            { name: 'Ramsan Ali', role: 'Batsman' },
+            { name: 'Manas Mohamed', role: 'Batsman' },
+            { name: 'Dilshan Madusanka', role: 'Bowler' }
+          ]
+        }
+      }
+    };
+
+    function toggleModal(id) {
+      document.getElementById(id).classList.toggle('hidden');
+    }
+
+    function showPage(pageId) {
+      document.getElementById('page-home').classList.add('hidden');
+      document.getElementById('page-dashboard').classList.add('hidden');
+      document.getElementById(pageId).classList.remove('hidden');
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-blue-600', 'text-white');
+        btn.classList.add('text-slate-600');
+      });
+      document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+      event.currentTarget.classList.add('bg-blue-600', 'text-white');
+    }
+
+    function selectTournament(name) {
+      showPage('page-dashboard');
+    }
+
+    function adjustVal(id, delta) {
+      const el = document.getElementById(id);
+      let v = parseInt(el.value) + delta;
+      if (v < 1) v = 1;
+      el.value = v;
+    }
+
+    // A to Z Dynamic Squad Binding Selector
+    let activeSelectorRole = 'striker';
+    function openDynamicPlayerSelector(roleType) {
+      activeSelectorRole = roleType;
+      const container = document.getElementById('dynamic-player-list-container');
+      const titleEl = document.getElementById('dynamic-modal-title');
+      
+      // Determine correct team squad based on role (Batting vs Bowling team)
+      let targetTeamName = (roleType === 'bowler') ? appData.bowlingTeam : appData.battingTeam;
+      let teamObj = appData.teams[targetTeamName] || appData.teams['EAGLES'];
+      
+      titleEl.innerText = `Select ${roleType.toUpperCase()} (${teamObj.fullName})`;
+      
+      container.innerHTML = teamObj.players.map(p => `
+        <div onclick="assignSelectedPlayer('${p.name}')" class="bg-slate-50 hover:bg-blue-50 border p-2.5 rounded-xl flex items-center justify-between cursor-pointer transition">
+          <span class="font-bold text-xs text-slate-800">${p.name} <span class="text-[10px] text-slate-400">(${p.role})</span></span>
+          <span class="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-bold">Select</span>
+        </div>
+      `).join('');
+      
+      toggleModal('modal-select-player-dynamic');
+    }
+
+    function assignSelectedPlayer(playerName) {
+      if (activeSelectorRole === 'striker') {
+        appData.striker.name = playerName;
+        appData.striker.runs = 0;
+        appData.striker.balls = 0;
+        appData.striker.fours = 0;
+        appData.striker.sixes = 0;
+      } else if (activeSelectorRole === 'nonstriker') {
+        appData.nonStriker.name = playerName;
+        appData.nonStriker.runs = 0;
+        appData.nonStriker.balls = 0;
+      } else if (activeSelectorRole === 'bowler') {
+        appData.bowler.name = playerName;
+        appData.bowler.runs = 0;
+        appData.bowler.wickets = 0;
+      }
+      toggleModal('modal-select-player-dynamic');
+      updateUI();
+    }
+
+    function addRun(r) {
+      appData.history.push(JSON.parse(JSON.stringify(appData)));
+      appData.runs += r;
+      appData.balls++;
+      appData.striker.runs += r;
+      appData.striker.balls++;
+      if (r === 4) appData.striker.fours++;
+      if (r === 6) appData.striker.sixes++;
+      appData.bowler.runs += r;
+
+      appData.thisOver.push(r.toString());
+
+      if (r % 2 !== 0) swapStrike();
+
+      if (appData.balls >= 6) {
+        appData.overs++;
+        appData.balls = 0;
+        swapStrike();
+        setTimeout(() => { alert("Over Completed! Please select next bowler."); openDynamicPlayerSelector('bowler'); }, 200);
+      }
+
+      updateUI();
+    }
+
+    function addExtraPopup(type) {
+      appData.history.push(JSON.parse(JSON.stringify(appData)));
+      appData.runs += 1;
+      appData.thisOver.push(type);
+      updateUI();
+    }
+
+    function openWideSubMenu() {
+      addExtraPopup('Wide');
+    }
+
+    function openNoBallSubMenu() {
+      addExtraPopup('NoBall');
+    }
+
+    function triggerWicketDismissal() {
+      toggleModal('modal-wicket-popup');
+    }
+
+    function confirmWicketDismissal() {
+      appData.history.push(JSON.parse(JSON.stringify(appData)));
+      appData.wickets++;
+      appData.balls++;
+      appData.bowler.wickets++;
+      appData.thisOver.push('W');
+
+      const nextB = document.getElementById('next-batsman-input').value || 'New Batter';
+      appData.striker = { name: nextB, runs: 0, balls: 0, fours: 0, sixes: 0 };
+      document.getElementById('next-batsman-input').value = '';
+
+      if (appData.balls >= 6) {
+        appData.overs++;
+        appData.balls = 0;
+      }
+
+      toggleModal('modal-wicket-popup');
+      updateUI();
+    }
+
+    function swapStrike() {
+      const temp = appData.striker;
+      appData.striker = appData.nonStriker;
+      appData.nonStriker = temp;
+      updateUI();
+    }
+
+    function undoLastDelivery() {
+      if (appData.history.length > 0) {
+        appData = appData.history.pop();
+        updateUI();
+      }
+    }
+
+    function updateUI() {
+      document.getElementById('live-runs-wickets-display').innerText = `${appData.runs}/${appData.wickets}`;
+      document.getElementById('live-overs-display').innerText = `(${appData.overs}.${appData.balls} ov)`;
+
+      document.getElementById('striker-name-val').innerText = appData.striker.name;
+      document.getElementById('striker-runs-val').innerText = appData.striker.runs;
+      document.getElementById('striker-balls-val').innerText = appData.striker.balls;
+      document.getElementById('striker-4s-val').innerText = appData.striker.fours;
+      document.getElementById('striker-6s-val').innerText = appData.striker.sixes;
+
+      document.getElementById('nonstriker-name-val').innerText = appData.nonStriker.name;
+      document.getElementById('nonstriker-runs-val').innerText = appData.nonStriker.runs;
+      document.getElementById('nonstriker-balls-val').innerText = appData.nonStriker.balls;
+
+      document.getElementById('bowler-name-val').innerText = appData.bowler.name;
+      document.getElementById('bowler-figures-val').innerText = `${appData.overs}.${appData.balls} - 0 - ${appData.bowler.runs} - ${appData.bowler.wickets}`;
+
+      document.getElementById('obs-team-a-name').innerText = appData.battingTeam;
+      document.getElementById('obs-team-b-name').innerText = appData.bowlingTeam;
+      document.getElementById('obs-main-score').innerText = `${appData.runs} - ${appData.wickets}`;
+      document.getElementById('obs-main-overs').innerText = `${appData.overs}.${appData.balls} OVERS`;
+      document.getElementById('obs-striker-line').innerText = `${appData.striker.name.toUpperCase().substring(0, 8)} * ${appData.striker.runs} (${appData.striker.balls})`;
+      document.getElementById('obs-bowler-line').innerText = `${appData.bowler.name.toUpperCase().substring(0, 8)} ${appData.overs}.${appData.balls}-${appData.bowler.runs}-${appData.bowler.wickets}`;
+
+      const container = document.getElementById('this-over-chips-container');
+      if (appData.thisOver.length === 0) {
+        container.innerHTML = `<span class="text-xs text-slate-400 italic">No deliveries bowled yet</span>`;
+      } else {
+        container.innerHTML = appData.thisOver.map(b => `
+          <span class="w-7 h-7 rounded-full ${b === 'W' ? 'bg-red-600' : (b.includes('4') || b.includes('6') ? 'bg-emerald-600' : 'bg-slate-700')} flex items-center justify-center text-xs font-bold text-white shadow">${b}</span>
+        `).join('');
+      }
+    }
+
+    function triggerOBS(cmd) {
+      alert(`OBS Graphic Trigger Sent: [${cmd.toUpperCase()}]`);
+    }
+
+    function openTossModal() {
+      toggleModal('modal-toss');
+    }
+
+    function selectTossWinner(team) {
+      appData.tossWinner = team;
+      document.getElementById('toss-team-a-btn').className = team === 'EAGLES' ? 'bg-blue-50 text-blue-800 font-black py-3 rounded-xl border-2 border-blue-600 shadow' : 'bg-slate-100 text-slate-800 font-black py-3 rounded-xl border border-slate-300';
+      document.getElementById('toss-team-b-btn').className = team === 'WARRIORS' ? 'bg-blue-50 text-blue-800 font-black py-3 rounded-xl border-2 border-blue-600 shadow' : 'bg-slate-100 text-slate-800 font-black py-3 rounded-xl border border-slate-300';
+    }
+
+    function selectElected(choice) {
+      appData.electedChoice = choice;
+      document.getElementById('elect-bat-btn').className = choice === 'bat' ? 'w-12 h-12 bg-blue-600 text-white rounded-xl flex items-center justify-center text-2xl font-bold shadow' : 'w-12 h-12 bg-slate-100 text-slate-800 rounded-xl border border-slate-300 flex items-center justify-center text-2xl';
+      document.getElementById('elect-bowl-btn').className = choice === 'bowl' ? 'w-12 h-12 bg-blue-600 text-white rounded-xl flex items-center justify-center text-2xl font-bold shadow' : 'w-12 h-12 bg-slate-100 text-slate-800 rounded-xl border border-slate-300 flex items-center justify-center text-2xl';
+    }
+
+    function startMatchNow() {
+      if (appData.electedChoice === 'bat') {
+        appData.battingTeam = appData.tossWinner;
+        appData.bowlingTeam = appData.tossWinner === 'EAGLES' ? 'WARRIORS' : 'EAGLES';
+      } else {
+        appData.bowlingTeam = appData.tossWinner;
+        appData.battingTeam = appData.tossWinner === 'EAGLES' ? 'WARRIORS' : 'EAGLES';
+      }
+      document.getElementById('live-toss-details-strip').innerText = `'${appData.tossWinner}' won the toss and elected to ${appData.electedChoice}`;
+      toggleModal('modal-toss');
+      alert('Match Started Live!');
+    }
+
+    function copyOBSOverlayURL() {
+      alert('OBS Browser Source Link copied to clipboard!');
+    }
+
+    function openManageSquad(teamName) {
+      alert(`Managing squad rosters for ${teamName}`);
+    }
+
+    function openTeamSearchModal(side) {
+      alert(`Select Team ${side}`);
+    }
+  </script>
+</body>
+</html>
